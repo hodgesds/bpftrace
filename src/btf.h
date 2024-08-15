@@ -71,6 +71,7 @@ public:
   std::set<std::string> get_all_structs() const;
   std::unique_ptr<std::istream> get_all_funcs() const;
   std::unordered_set<std::string> get_all_iters() const;
+  std::unordered_set<std::string> get_all_struct_ops() const;
   std::map<std::string, std::vector<std::string>> get_params(
       const std::set<std::string>& funcs) const;
 
@@ -79,7 +80,8 @@ public:
                                      std::string& err);
   void resolve_fields(SizedType& type);
 
-  int get_btf_id(std::string_view func, std::string_view mod) const;
+  int get_btf_id(std::string_view func, std::string_view mod, bool resolve_structs = false) const;
+  int get_struct_field_func_btf_id(std::string_view struct_name, std::string_view func, std::string_view mod) const;
 
 private:
   void load_kernel_btfs(const std::set<std::string>& modules);
@@ -101,6 +103,8 @@ private:
       const std::set<std::string>& funcs) const;
   std::set<std::string> get_all_structs_from_btf(const struct btf* btf) const;
   std::unordered_set<std::string> get_all_iters_from_btf(
+      const struct btf* btf) const;
+  std::unordered_set<std::string> get_all_struct_ops_from_btf(
       const struct btf* btf) const;
   /*
    * Similar to btf_type_skip_modifiers this returns the id of the first

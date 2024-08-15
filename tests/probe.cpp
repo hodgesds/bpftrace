@@ -82,6 +82,7 @@ TEST_F(probe_btf, short_name)
   compare_bytecode("iter:task { 1 }", "it:task { 1 }");
   compare_bytecode("iter:task_file { 1 }", "it:task_file { 1 }");
   compare_bytecode("iter:task_vma { 1 }", "it:task_vma { 1 }");
+  compare_bytecode("struct_ops:sh:f { 1 }", "ops:sh:f { 1 }");
 }
 
 } // namespace bpftrace::test::probe

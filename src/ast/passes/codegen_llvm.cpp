@@ -2763,6 +2763,7 @@ int CodegenLLVM::getReturnValueForProbe(ProbeType probe_type)
     case ProbeType::kretfunc:
     case ProbeType::iter:
     case ProbeType::rawtracepoint:
+    case ProbeType::struct_ops:
       return 0;
   }
   LOG(BUG) << "Unknown probetype";

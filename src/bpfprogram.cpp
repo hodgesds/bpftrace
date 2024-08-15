@@ -38,6 +38,8 @@ void BpfProgram::set_expected_attach_type(const Probe &probe,
     attach_type = libbpf::BPF_TRACE_FENTRY;
   else if (probe.type == ProbeType::kretfunc)
     attach_type = libbpf::BPF_TRACE_FEXIT;
+  else if (probe.type == ProbeType::struct_ops)
+    attach_type = libbpf::BPF_STRUCT_OPS;
   else if (probe.type == ProbeType::iter)
     attach_type = libbpf::BPF_TRACE_ITER;
 
@@ -61,7 +63,7 @@ void BpfProgram::set_attach_target(const Probe &probe,
                                    const Config &config)
 {
   if (probe.type != ProbeType::kfunc && probe.type != ProbeType::kretfunc &&
-      probe.type != ProbeType::iter)
+      probe.type != ProbeType::iter && probe.type != ProbeType::struct_ops)
     return;
 
   const std::string &mod = probe.path;

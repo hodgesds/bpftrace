@@ -105,6 +105,14 @@ bool BPFfeature::try_load(enum libbpf::bpf_prog_type prog_type,
   if (prog_type == libbpf::BPF_PROG_TYPE_TRACING && has_btf()) {
     btf_id = btf_.get_btf_id(name, "vmlinux");
   }
+  if (prog_type == libbpf::BPF_PROG_TYPE_STRUCT_OPS && has_btf()) {
+    btf_id = btf_.get_struct_field_func_btf_id(name, name, "vmlinux");
+    if (btf_id > 0) {
+      return true;
+    } else {
+      return false;
+    }
+  }
 
   if (prog_type == libbpf::BPF_PROG_TYPE_TRACING) {
     // List of available functions must be readable
@@ -642,7 +650,9 @@ std::string BPFfeature::report()
       << "  kprobe_multi: " << to_str(has_kprobe_multi())
       << "  uprobe_multi: " << to_str(has_uprobe_multi())
       << "  raw_tp_special: " << to_str(has_raw_tp_special())
-      << "  iter: " << to_str(has_iter("task")) << std::endl;
+      << "  iter: " << to_str(has_iter("task"))
+      << "  struct_ops: " << to_str(has_struct_ops("tcp_congestion_ops"))
+      << std::endl;
 
   return buf.str();
 }
@@ -713,6 +723,14 @@ bool BPFfeature::has_iter(std::string name)
   return detect_prog_type(libbpf::BPF_PROG_TYPE_TRACING,
                           tracing_name.c_str(),
                           libbpf::BPF_TRACE_ITER);
+}
+
+bool BPFfeature::has_struct_ops(std::string name)
+{
+  auto tracing_name = "bpf_struct_ops_" + name;
+  return detect_prog_type(libbpf::BPF_PROG_TYPE_STRUCT_OPS,
+                          tracing_name.c_str(),
+                          libbpf::BPF_STRUCT_OPS);
 }
 
 } // namespace bpftrace

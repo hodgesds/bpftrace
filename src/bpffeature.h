@@ -102,6 +102,7 @@ public:
   bool has_prog_kfunc();
   bool has_module_btf();
   bool has_iter(std::string name);
+  bool has_struct_ops(std::string name);
 
   std::string report(void);
 
@@ -129,6 +130,7 @@ public:
   DEFINE_PROG_TEST(kprobe, libbpf::BPF_PROG_TYPE_KPROBE);
   DEFINE_PROG_TEST(tracepoint, libbpf::BPF_PROG_TYPE_TRACEPOINT);
   DEFINE_PROG_TEST(perf_event, libbpf::BPF_PROG_TYPE_PERF_EVENT);
+  DEFINE_PROG_TEST(struct_ops, libbpf::BPF_PROG_TYPE_STRUCT_OPS);
 
 protected:
   std::optional<bool> has_loop_;
@@ -143,6 +145,7 @@ protected:
   std::optional<bool> has_prog_kfunc_;
   std::optional<bool> has_module_btf_;
   std::optional<bool> has_btf_func_global_;
+  std::optional<bool> has_struct_ops_;
 
 private:
   bool detect_map(libbpf::bpf_map_type map_type);

@@ -75,6 +75,8 @@ private:
   int detach_iter(void);
   void attach_raw_tracepoint(void);
   int detach_raw_tracepoint(void);
+  void attach_struct_ops(void);
+  int detach_struct_ops(void);
 
   static std::map<std::string, int> cached_prog_fds_;
   bool use_cached_progfd(BPFfeature &feature);

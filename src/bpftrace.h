@@ -99,6 +99,7 @@ public:
       Probe &probe,
       const BpfBytecode &bytecode);
   int run_iter();
+  int run_struct_ops();
   int print_maps();
   int clear_map(const BpfMap &map);
   int zero_map(const BpfMap &map);
@@ -260,6 +261,7 @@ private:
                        const ast::Probe &p,
                        int usdt_location_idx = 0);
   bool has_iter_ = false;
+  bool has_struct_ops_ = false;
   int epollfd_ = -1;
   struct ring_buffer *ringbuf_ = nullptr;
   uint64_t event_loss_count_ = 0;

@@ -245,6 +245,7 @@ std::string probetypeName(ProbeType t)
     case ProbeType::kretfunc:    return "kretfunc";    break;
     case ProbeType::iter:        return "iter";        break;
     case ProbeType::rawtracepoint: return "rawtracepoint";  break;
+    case ProbeType::struct_ops:  return "struct_ops";  break;
   }
   // clang-format on
 

@@ -195,6 +195,7 @@ AddrSpace SemanticAnalyser::find_addrspace(ProbeType pt)
     case ProbeType::tracepoint:
     case ProbeType::iter:
     case ProbeType::rawtracepoint:
+    case ProbeType::struct_ops:
       return AddrSpace::kernel;
     case ProbeType::uprobe:
     case ProbeType::uretprobe:
@@ -226,6 +227,7 @@ void SemanticAnalyser::visit(Builtin &builtin)
     ProbeType pt = probetype(probe->attach_points[0]->provider);
     libbpf::bpf_prog_type bt = progtype(pt);
     std::string func = probe->attach_points[0]->func;
+    std::string target = probe->attach_points[0]->target;
 
     for (auto *attach_point : probe->attach_points) {
       ProbeType pt = probetype(attach_point->provider);
@@ -254,6 +256,18 @@ void SemanticAnalyser::visit(Builtin &builtin)
                              "struct bpf_perf_event_data")),
             AddrSpace::kernel);
         builtin.type.MarkCtxAccess();
+        break;
+      case libbpf::BPF_PROG_TYPE_STRUCT_OPS:
+        if (pt == ProbeType::struct_ops) {
+          std::string structType = "struct " + target;
+          builtin.type = CreatePointer(
+              CreateRecord(structType, bpftrace_.structs.Lookup(structType)),
+              AddrSpace::kernel);
+          builtin.type.MarkCtxAccess();
+          builtin.type.is_btftype = true;
+	} else {
+          LOG(ERROR, builtin.loc, err_) << "invalid program type";
+        }
         break;
       case libbpf::BPF_PROG_TYPE_TRACING:
         if (pt == ProbeType::iter) {
@@ -2986,6 +3000,12 @@ void SemanticAnalyser::visit(AttachPoint &ap)
 
     if (ap.func == "")
       LOG(ERROR, ap.loc, err_) << "fentry/fexit should specify a function";
+  } else if (ap.provider == "struct_ops") {
+    if (ap.target == "" || ap.func == "")
+      LOG(ERROR, ap.loc, err_) << "struct_ops must have a set of ops and a program";
+
+    if (!bpftrace_.feature_->has_struct_ops(ap.target))
+      LOG(ERROR, ap.loc, err_) << "struct_ops not available for your kernel version, missing target: " + ap.target;
   } else if (ap.provider == "iter") {
     if (!listing_ && bpftrace_.btf_->get_all_iters().count(ap.func) <= 0) {
       LOG(ERROR, ap.loc, err_)
@@ -3262,6 +3282,7 @@ bool SemanticAnalyser::check_available(const Call &call, const AttachPoint &ap)
       case ProbeType::software:
       case ProbeType::hardware:
       case ProbeType::watchpoint:
+      case ProbeType::struct_ops:
       case ProbeType::asyncwatchpoint:
         return true;
       case ProbeType::invalid:
@@ -3294,6 +3315,7 @@ bool SemanticAnalyser::check_available(const Call &call, const AttachPoint &ap)
       case ProbeType::kretfunc:
       case ProbeType::iter:
       case ProbeType::rawtracepoint:
+      case ProbeType::struct_ops:
         return false;
     }
   } else if (func == "signal") {
@@ -3317,6 +3339,7 @@ bool SemanticAnalyser::check_available(const Call &call, const AttachPoint &ap)
       case ProbeType::watchpoint:
       case ProbeType::asyncwatchpoint:
       case ProbeType::iter:
+      case ProbeType::struct_ops:
         return false;
     }
   }

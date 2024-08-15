@@ -192,6 +192,8 @@ int BPFtrace::add_probe(const ast::AttachPoint &ap,
 
   if (type == ProbeType::iter)
     has_iter_ = true;
+  if (type == ProbeType::struct_ops)
+    has_struct_ops_ = true;
 
   // Preload symbol tables if necessary
   if (resources.probes_using_usym.find(&p) !=
@@ -809,6 +811,7 @@ bool attach_reverse(const Probe &p)
     case ProbeType::asyncwatchpoint:
     case ProbeType::hardware:
     case ProbeType::rawtracepoint:
+    case ProbeType::struct_ops:
       return false;
     case ProbeType::invalid:
       LOG(BUG) << "Unknown probe type";
@@ -865,6 +868,59 @@ int BPFtrace::run_iter()
   int link_fd = ap->linkfd_;
   if (link_fd < 0) {
     LOG(ERROR) << "Failed to link iter probe";
+    return 1;
+  }
+
+  if (probe->pin.empty()) {
+    int iter_fd = bpf_iter_create(link_fd);
+
+    if (iter_fd < 0) {
+      LOG(ERROR) << "Failed to open iter probe link";
+      return 1;
+    }
+
+    while ((len = read(iter_fd, buf, sizeof(buf))) > 0) {
+      fwrite(buf, len, 1, stdout);
+    }
+
+    close(iter_fd);
+  } else {
+    auto pin = probe->pin;
+
+    if (pin.at(0) != '/')
+      pin = "/sys/fs/bpf/" + pin;
+
+    if (bpf_obj_pin(link_fd, pin.c_str()))
+      LOG(ERROR) << "Failed to pin iter probe link";
+    else
+      std::cout << "Program pinned to " << pin << std::endl;
+  }
+
+  return 0;
+}
+
+int BPFtrace::run_struct_ops()
+{
+  auto probe = resources.probes.begin();
+  char buf[1024] = {};
+  ssize_t len;
+
+  if (probe == resources.probes.end()) {
+    LOG(ERROR) << "Failed to create struct_ops probe";
+    return 1;
+  }
+
+  // If a script contains an iter probe, it must be the only probe
+  // assert(attached_probes_.size() == 1);
+  if (attached_probes_.empty()) {
+    LOG(ERROR) << "Failed to attach struct_ops probe";
+    return 1;
+  }
+
+  auto &ap = *attached_probes_.begin();
+  int link_fd = ap->linkfd_;
+  if (link_fd < 0) {
+    LOG(ERROR) << "Failed to link struct_ops probe";
     return 1;
   }
 
@@ -1042,6 +1098,10 @@ int BPFtrace::run(BpfBytecode bytecode)
 
   if (has_iter_) {
     int err = run_iter();
+    if (err)
+      return err;
+  } else if (has_struct_ops_) {
+    int err = run_struct_ops();
     if (err)
       return err;
   } else {

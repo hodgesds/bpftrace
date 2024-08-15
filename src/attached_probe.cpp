@@ -71,6 +71,7 @@ libbpf::bpf_prog_type progtype(ProbeType t)
     case ProbeType::kretfunc:   return libbpf::BPF_PROG_TYPE_TRACING; break;
     case ProbeType::iter:       return libbpf::BPF_PROG_TYPE_TRACING; break;
     case ProbeType::rawtracepoint: return libbpf::BPF_PROG_TYPE_RAW_TRACEPOINT; break;
+    case ProbeType::struct_ops: return libbpf::BPF_PROG_TYPE_STRUCT_OPS; break;
     // clang-format on
     case ProbeType::invalid:
       LOG(BUG) << "program type invalid";
@@ -87,6 +88,7 @@ std::string progtypeName(libbpf::bpf_prog_type t)
     case libbpf::BPF_PROG_TYPE_TRACEPOINT: return "BPF_PROG_TYPE_TRACEPOINT"; break;
     case libbpf::BPF_PROG_TYPE_PERF_EVENT: return "BPF_PROG_TYPE_PERF_EVENT"; break;
     case libbpf::BPF_PROG_TYPE_TRACING:    return "BPF_PROG_TYPE_TRACING";    break;
+    case libbpf::BPF_PROG_TYPE_STRUCT_OPS: return "BPF_PROG_TYPE_STRUCT_OPS"; break;
     // clang-format on
     default:
       LOG(BUG) << "invalid program type: " << t;
@@ -146,6 +148,25 @@ int AttachedProbe::detach_raw_tracepoint()
   return 0;
 }
 
+void AttachedProbe::attach_struct_ops()
+{
+
+  linkfd_ = bpf_link_create(progfd_,
+                            0,
+                            static_cast<enum ::bpf_attach_type>(
+                                libbpf::BPF_STRUCT_OPS),
+                            nullptr);
+  if (linkfd_ < 0) {
+    throw FatalUserException("Error attaching probe: " + probe_.name);
+  }
+}
+
+int AttachedProbe::detach_struct_ops()
+{
+  close(linkfd_);
+  return 0;
+}
+
 AttachedProbe::AttachedProbe(Probe &probe,
                              const BpfProgram &prog,
                              bool safe_mode,
@@ -190,6 +211,9 @@ AttachedProbe::AttachedProbe(Probe &probe,
       break;
     case ProbeType::rawtracepoint:
       attach_raw_tracepoint();
+      break;
+    case ProbeType::struct_ops:
+      attach_struct_ops();
       break;
     default:
       LOG(BUG) << "invalid attached probe type \"" << probe_.type << "\"";
@@ -267,6 +291,9 @@ AttachedProbe::~AttachedProbe()
     case ProbeType::rawtracepoint:
       err = detach_raw_tracepoint();
       break;
+    case ProbeType::struct_ops:
+      err = detach_struct_ops();
+      break;
     case ProbeType::invalid:
       LOG(BUG) << "invalid attached probe type \"" << probe_.type
                << "\" at destructor";
@@ -319,6 +346,7 @@ std::string AttachedProbe::eventname() const
       offset_str << std::hex << offset_;
       return eventprefix() + sanitise_bpf_program_name(probe_.path) + "_" +
              offset_str.str() + index_str;
+    case ProbeType::struct_ops:
     case ProbeType::tracepoint:
       return probe_.attach_point;
     default:

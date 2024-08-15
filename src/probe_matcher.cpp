@@ -174,6 +174,24 @@ std::set<std::string> ProbeMatcher::get_matches_for_probetype(
       symbol_stream = std::make_unique<std::istringstream>(ret);
       break;
     }
+    case ProbeType::struct_ops: {
+      if (!bpftrace_->has_btf_data())
+        break;
+
+      std::string ret;
+      auto struct_ops = bpftrace_->btf_->get_all_struct_ops();
+      for (auto& struct_op : struct_ops) {
+        // second check
+        if (bpftrace_->feature_->has_struct_ops(struct_op))
+          ret += struct_op + "\n";
+        else
+          LOG(WARNING) << "The kernel contains bpf_struct_ops__" << struct_op
+                       << " struct but does not support loading struct_ops"
+                          " program against it. Please report this bug.";
+      }
+      symbol_stream = std::make_unique<std::istringstream>(ret);
+      break;
+    }
     case ProbeType::interval:
     case ProbeType::profile: {
       std::string ret;
@@ -424,6 +442,30 @@ FuncParamLists ProbeMatcher::get_iters_params(
   return params;
 }
 
+FuncParamLists ProbeMatcher::get_struct_ops_params(
+    const std::set<std::string>& struct_ops)
+{
+  const std::string prefix = "vmlinux:bpf_struct_ops_";
+  FuncParamLists params;
+  std::set<std::string> funcs;
+
+  for (auto& struct_op : struct_ops)
+    funcs.insert(prefix + struct_op);
+
+  params = bpftrace_->btf_->get_params(funcs);
+  for (auto func : funcs) {
+    // delete `int retval`
+    params[func].pop_back();
+    // delete `struct bpf_iter_meta * meta`
+    params[func].erase(params[func].begin());
+    // restore key value
+    auto param = params.extract(func);
+    param.key() = func.substr(prefix.size());
+    params.insert(std::move(param));
+  }
+  return params;
+}
+
 FuncParamLists ProbeMatcher::get_uprobe_params(
     const std::set<std::string>& uprobes)
 {
@@ -463,6 +505,8 @@ void ProbeMatcher::list_probes(ast::Program* prog)
           param_lists = get_iters_params(matches);
         else if (probe_type == ProbeType::uprobe)
           param_lists = get_uprobe_params(matches);
+	else if (probe_type == ProbeType::struct_ops)
+          param_lists = get_struct_ops_params(matches);
       }
 
       for (auto& match : matches) {
@@ -496,6 +540,7 @@ std::set<std::string> ProbeMatcher::get_matches_for_ap(
   std::string search_input;
   switch (probetype(attach_point.provider)) {
     case ProbeType::kprobe:
+    case ProbeType::struct_ops:
     case ProbeType::kretprobe: {
       if (!attach_point.target.empty())
         search_input = attach_point.target + ":" + attach_point.func;

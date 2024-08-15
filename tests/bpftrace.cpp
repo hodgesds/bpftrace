@@ -1212,6 +1212,17 @@ TEST_F(bpftrace_btf, add_probes_iter_task_vma)
   check_probe(bpftrace->get_probes().at(0), ProbeType::iter, "iter:task_vma");
 }
 
+TEST_F(bpftrace_btf, add_probes_struct_ops)
+{
+  auto bpftrace = get_strict_mock_bpftrace();
+  bpftrace->feature_ = std::make_unique<MockBPFfeature>(true);
+  parse_probe("struct_ops:tcp_congestion_ops:init{}", *bpftrace);
+
+  ASSERT_EQ(1U, bpftrace->get_probes().size());
+  ASSERT_EQ(0U, bpftrace->get_special_probes().size());
+  check_probe(bpftrace->get_probes().at(0), ProbeType::struct_ops, "struct_ops:tcp_congestion_ops:init");
+}
+
 TEST(bpftrace, add_probes_rawtracepoint)
 {
   StrictMock<MockBPFtrace> bpftrace;

@@ -558,6 +558,7 @@ enum class ProbeType {
   kretfunc,
   iter,
   rawtracepoint,
+  struct_ops,
 };
 
 std::ostream &operator<<(std::ostream &os, ProbeType type);
@@ -621,6 +622,10 @@ const std::vector<ProbeItem> PROBE_LIST = {
   { .name = "rawtracepoint",
     .aliases = { "rt" },
     .type = ProbeType::rawtracepoint,
+    .show_in_kernel_list = true },
+  { .name = "struct_ops",
+    .aliases = { "ops" },
+    .type = ProbeType::struct_ops,
     .show_in_kernel_list = true },
 };
 

@@ -205,6 +205,8 @@ AttachPointParser::State AttachPointParser::parse_attachpoint(AttachPoint &ap)
       return iter_parser();
     case ProbeType::rawtracepoint:
       return raw_tracepoint_parser();
+    case ProbeType::struct_ops:
+      return struct_ops_parser();
     case ProbeType::invalid:
       errs_ << "Invalid probe type: " << ap.provider << std::endl;
       return INVALID;
@@ -746,6 +748,25 @@ AttachPointParser::State AttachPointParser::iter_parser()
     ap_->pin = parts_[2];
   return OK;
 }
+
+AttachPointParser::State AttachPointParser::struct_ops_parser()
+{
+  if (parts_.size() != 3) {
+    if (ap_->ignore_invalid)
+      return SKIP;
+
+    return argument_count_error(2);
+  }
+
+  ap_->target = parts_[1];
+  ap_->func = parts_[2];
+
+  if (has_wildcard(ap_->func) || has_wildcard(ap_->target))
+    ap_->expansion = ExpansionType::FULL;
+
+  return OK;
+}
+
 
 AttachPointParser::State AttachPointParser::raw_tracepoint_parser()
 {

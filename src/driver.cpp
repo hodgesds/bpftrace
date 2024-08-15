@@ -86,7 +86,8 @@ std::set<std::string> Driver::list_modules() const
       auto probe_type = probetype(ap->provider);
       if (probe_type == ProbeType::kfunc || probe_type == ProbeType::kretfunc ||
           ((probe_type == ProbeType::kprobe ||
-            probe_type == ProbeType::kretprobe) &&
+            probe_type == ProbeType::kretprobe ||
+	    probe_type == ProbeType::struct_ops) &&
            !ap->target.empty())) {
         if (ap->expansion != ast::ExpansionType::NONE) {
           for (auto &match :

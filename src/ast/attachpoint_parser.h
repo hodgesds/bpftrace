@@ -53,6 +53,7 @@ private:
   State kfunc_parser();
   State iter_parser();
   State raw_tracepoint_parser();
+  State struct_ops_parser();
 
   State argument_count_error(int expected,
                              std::optional<int> expected2 = std::nullopt);

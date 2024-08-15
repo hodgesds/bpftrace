@@ -746,16 +746,77 @@ std::unordered_set<std::string> BTF::get_all_iters() const
   return iters;
 }
 
-int BTF::get_btf_id(std::string_view func, std::string_view mod) const
+std::unordered_set<std::string> BTF::get_all_struct_ops_from_btf(
+    const struct btf *btf) const
+{
+  std::unordered_set<std::string> struct_ops_set;
+  const std::string prefix = "bpf_struct_ops_";
+
+  __s32 id, max = static_cast<__s32>(type_cnt(btf));
+
+  for (id = start_id(btf); id <= max; id++) {
+    const struct btf_type *t = btf__type_by_id(btf, id);
+
+    if (!t || !(btf_is_struct(t)))
+      continue;
+
+    const std::string name = btf_str(btf, t->name_off);
+
+    if (name.size() > prefix.size() &&
+        name.compare(0, prefix.size(), prefix) == 0) {
+      struct_ops_set.insert(name.substr(prefix.size()));
+    }
+  }
+
+  return struct_ops_set;
+}
+
+std::unordered_set<std::string> BTF::get_all_struct_ops() const
+{
+  std::unordered_set<std::string> struct_ops;
+  for (auto &btf_obj : btf_objects) {
+    auto mod_struct_ops = get_all_struct_ops_from_btf(btf_obj.btf);
+    struct_ops.insert(mod_struct_ops.begin(), mod_struct_ops.end());
+  }
+  return struct_ops;
+}
+
+int BTF::get_btf_id(std::string_view func, std::string_view mod, bool resolve_structs) const
 {
   for (auto &btf_obj : btf_objects) {
     if (!mod.empty() && mod != btf_obj.name)
       continue;
 
-    auto id = find_id_in_btf(btf_obj.btf, func, BTF_KIND_FUNC);
-    if (id >= 0)
-      return id;
+    if (resolve_structs) {
+      auto id = find_id_in_btf(btf_obj.btf, func, BTF_KIND_STRUCT);
+      if (id >= 0)
+        return id;
+    } else {
+      auto id = find_id_in_btf(btf_obj.btf, func, BTF_KIND_FUNC);
+      if (id >= 0)
+        return id;
+    }
   }
+
+  return -1;
+}
+
+int BTF::get_struct_field_func_btf_id(std::string_view struct_name,
+		                      std::string_view func,
+				      std::string_view mod) const
+{
+  __s32 struct_id = -1;
+
+  for (auto &btf_obj : btf_objects) {
+    if (!mod.empty() && mod != btf_obj.name)
+      continue;
+
+      struct_id = find_id_in_btf(btf_obj.btf, func, BTF_KIND_STRUCT);
+      if (struct_id >= 0)
+	break;
+  }
+  if (struct_id < 0)
+    return -1;
 
   return -1;
 }
